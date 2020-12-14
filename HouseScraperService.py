@@ -16,12 +16,11 @@ class Housing:
     house = ''
     province = ''
     city = ''
-    num_page=0
+    num_page = 0
     url = 'https://www.point2homes.com/CA/Real-Estate-Listings/' + province + '/' + city + '.html?location=' + city + '%2C+' + province + '&PropertyType=' + house + '&search_mode=location&SelectedView=listings&page='
 
     total = 0
     average_price = 0
-
 
     prices = []
     headers = {
@@ -32,29 +31,31 @@ class Housing:
         Housing.house = Prompt.ask("What kind of house are you look for ? enter the corresponding code",
                                    choices=["House", 'CondoApartment', 'RowTownhouse']
                                    )
-        Housing.province = Prompt.ask(
-            "What province are you looking in? enter the corresponding code",
-            choices=["ON", "QC", 'AB', 'BC', 'MB', 'NB', 'NL', 'NT', 'NS', 'NU', 'PE', 'SK', 'YT']
-        )
-        Housing.city = Prompt.ask(
-            "Please Enter the city",
-        )
+
+        Housing.province = Prompt.ask("What province are you looking in? enter the corresponding code",
+                                      choices=["ON", "QC", 'AB', 'BC', 'MB', 'NB', 'NL', 'NT', 'NS', 'NU', 'PE', 'SK',
+                                               'YT']
+                                      )
+        Housing.city = Prompt.ask("Please Enter the city",
+                                  )
+
         Housing.url = 'https://www.point2homes.com/CA/Real-Estate-Listings/' + Housing.province + '/' + Housing.city + '.html?location=' + Housing.city + '%2C+' + Housing.province + '&PropertyType=' + Housing.house + '&search_mode=location&SelectedView=listings&page='
 
     def get_page_num(self):
         Housing.num_page = int(input("Enter the number of pages you want to scrape "))
 
-
     print(num_page)
+
     def scrape(self):
         for i in range(Housing.num_page):
-            page = requests.get(Housing.url + str(i+1), headers=Housing.headers)
+            page = requests.get(Housing.url + str(i + 1), headers=Housing.headers)
             soup = BeautifulSoup(page.content, 'html.parser')
-            print(Housing.url + str(i+1))
+            print(Housing.url + str(i + 1))
 
             with Bar('Downloading new page', fill='@', suffix='%(percent).1f%% - %(eta)ds') as bar:
                 for spanclass in soup.findAll(class_="green"):
-                    bar.next(3.5)
+                    # Number of listings per page changes but should be minimum of 20 (100/20 = 5)
+                    bar.next(5)
                     for span in spanclass.findAll('span'):
                         priceOfHouse = re.findall(r'\d+(?:,\d+)+(?:,\d+)?', str(span))
                         Housing.prices.append(int(priceOfHouse[0].replace(',', '')))
@@ -66,6 +67,7 @@ class Housing:
         print(Housing.prices.sort())
         Housing.average_price = Housing.total / len(Housing.prices)
 
+        # Create Table in console view of results
         property_table = Table()
         property_table.add_column('[bold green]city[/bold green]', style="bold cyan")
         property_table.add_column("House Type")
@@ -73,8 +75,10 @@ class Housing:
         property_table.add_column("Median Price")
         property_table.add_column("Sample Size")
 
-        property_table.add_row('[bold cyan]' + Housing.city + '[/bold cyan]', Housing.house, "[bold red]" + str(Housing.average_price),
-                           str(statistics.median(Housing.prices)), str(len(Housing.prices)))
+        property_table.add_row('[bold cyan]' + Housing.city + '[/bold cyan]',
+                               '[bold green]' + Housing.house + '[/bold green]',
+                               '[bold red]' + str(Housing.average_price) + '[/bold red]',
+                               str(statistics.median(Housing.prices)), str(len(Housing.prices)))
 
         Housing.console.print(property_table)
         print(Housing.prices)
@@ -92,13 +96,13 @@ class Housing:
             today = date.today()
 
             c.execute('''CREATE TABLE IF NOT EXISTS House_Prices (
-    City text,
-    House_Type  text,
-    Average Integer,
-    Median Integer,
-    Sample_Size Integer,
-    Current_Date Date
-    );''')
+                        City text,
+                        House_Type  text,
+                        Average Integer,
+                        Median Integer,
+                        Sample_Size Integer,
+                        Current_Date Date
+                        );''')
 
             # Insert a row of data
             c.execute("INSERT INTO House_Prices VALUES(?,?,?,?,?,?)",
@@ -123,11 +127,12 @@ class Housing:
 
             conn = sqlite3.connect('example.db')
             c = conn.cursor()
-
+            # Create headers for workbood/Excel
             heads = ["City", "Type_Of_House", "Average", "Median", "Sample_Size", "Date"]
             for i in range(len(heads)):
                 worksheet.write(0, i, heads[i])
 
+            # Get all values in the SQL table and return in the workbook/Excel table
             mysel = c.execute("select * from House_prices ")
             for i, row in enumerate(mysel):
                 for j, value in enumerate(row):
